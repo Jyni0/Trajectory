@@ -1,0 +1,50 @@
+{
+  "name": "trajectory",
+  "private": true,
+  "version": "2.5.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "typecheck": "tsc -b",
+    "icons": "tauri icon app-icon.png && python scripts/generate_icons.py"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@tanstack/react-virtual": "^3.14.13",
+    "@tauri-apps/api": "^2.12.1",
+    "@tauri-apps/plugin-opener": "^2.7.0",
+    "dompurify": "^3.4.16",
+    "lucide-react": "^1.49.0",
+    "motion": "^12.43.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^3.7.0",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/cli": "^2.12.1",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/node": "^22.20.5",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "jsdom": "^29.1.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3",
+    "vitest": "^3.2.7"
+  }
+}
