@@ -58,6 +58,10 @@ export interface MailApi {
   sendEmail(email: OutgoingEmail): Promise<string>;
   saveDraft(email: OutgoingEmail): Promise<string>;
   syncNow(accountId?: string): Promise<void>;
+  /** Fetches new mail of one folder from the server (in the background). */
+  syncFolder(folderId: string): Promise<void>;
+  /** Whether the backend shows system notifications for new mail. */
+  setNotifications(enabled: boolean): Promise<void>;
   saveAttachment(id: string): Promise<string>;
   openExternal(url: string): Promise<void>;
   on<K extends keyof EventMap>(event: K, cb: (payload: EventMap[K]) => void): Promise<Unlisten>;
@@ -103,6 +107,8 @@ function createTauriApi(): MailApi {
     sendEmail: (email) => invoke("send_email", { email }),
     saveDraft: (email) => invoke("save_draft", { email }),
     syncNow: (accountId) => invoke("sync_now", { accountId: accountId ?? null }),
+    syncFolder: (folderId) => invoke("sync_folder", { folderId }),
+    setNotifications: (enabled) => invoke("set_notifications", { enabled }),
     saveAttachment: (id) => invoke("save_attachment", { id }),
     openExternal: (url) => invoke("open_external", { url }),
     on: async (name, cb) => (await event).listen(name, (e) => cb(e.payload as never)),

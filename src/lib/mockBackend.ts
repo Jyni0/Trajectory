@@ -586,6 +586,14 @@ export function createMockBackend(opts: MockOptions = {}): MockBackend {
           setTimeout(() => emit("sync:status", { accountId: id, state: "idle", newMessages: 0 }), latency * 4);
         }
       }),
+    syncFolder: (folderId) =>
+      delay(() => {
+        const id = db.folders.find((f) => f.id === folderId)?.accountId;
+        if (!id) return;
+        emit("sync:status", { accountId: id, state: "syncing" });
+        setTimeout(() => emit("sync:status", { accountId: id, state: "idle", newMessages: 0 }), latency * 2);
+      }),
+    setNotifications: () => delay(() => {}),
     saveAttachment: (id) =>
       delay(() => {
         const att = db.emails.flatMap((e) => e.attachments).find((a) => a.id === id) ?? fail("not_found", "attachment")!;

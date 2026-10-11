@@ -18,11 +18,13 @@ pub mod site_icon;
 #[cfg(test)]
 mod tests;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, WindowEvent};
+use tauri_plugin_notification::NotificationExt;
 
 use commands::AppState;
 use mail_engine::{SyncCommand, SyncEngine};
@@ -44,8 +46,39 @@ impl EventSink for TauriSink {
             ) {
                 let _ = tray.set_tooltip(Some(format!("Trajectory — {unread} unread")));
             }
+            notify_new_mail(&self.0, &payload);
         }
         let _ = self.0.emit(event, payload);
+    }
+}
+
+/// A system notification for new inbox mail, unless the user is looking at
+/// the window (the UI shows a toast then) or turned notifications off.
+fn notify_new_mail(app: &AppHandle, payload: &serde_json::Value) {
+    if !app.state::<AppState>().notify.load(Ordering::Relaxed) {
+        return;
+    }
+    let in_view = app
+        .get_webview_window("main")
+        .is_some_and(|w| w.is_visible().unwrap_or(false) && w.is_focused().unwrap_or(false) && !w.is_minimized().unwrap_or(false));
+    if in_view {
+        return;
+    }
+    let count = payload["count"].as_u64().unwrap_or(0);
+    let first = &payload["latest"][0];
+    let (title, body) = if count == 1 && first.is_object() {
+        let from = first["from"]["name"]
+            .as_str()
+            .filter(|n| !n.trim().is_empty())
+            .or(first["from"]["address"].as_str())
+            .unwrap_or("New mail");
+        let subject = first["subject"].as_str().filter(|s| !s.trim().is_empty()).unwrap_or("(no subject)");
+        (from.to_string(), subject.to_string())
+    } else {
+        ("New mail".to_string(), format!("{count} new messages"))
+    };
+    if let Err(e) = app.notification().builder().title(title).body(body).show() {
+        log::warn!("cannot show notification: {e}");
     }
 }
 
@@ -129,6 +162,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
@@ -141,7 +175,7 @@ pub fn run() {
                 Arc::new(TauriSink(app.handle().clone())),
             );
             let (engine, sync) = SyncEngine::new(ctx.clone(), mail_engine::DEFAULT_INTERVAL);
-            app.manage(AppState { ctx, sync });
+            app.manage(AppState { ctx, sync, notify: AtomicBool::new(true) });
             tauri::async_runtime::spawn(engine.run());
             setup_tray(app)?;
             Ok(())
@@ -184,6 +218,8 @@ pub fn run() {
             commands::send_email,
             commands::save_draft,
             commands::sync_now,
+            commands::sync_folder,
+            commands::set_notifications,
             commands::save_attachment,
             commands::open_external,
             quit_app,

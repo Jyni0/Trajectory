@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { api, type Unlisten } from "@/lib/api";
+import { api, isTauri, type Unlisten } from "@/lib/api";
 import { displayName } from "@/lib/format";
 import { useMailStore } from "@/store/mailStore";
 import { useUiStore } from "@/store/uiStore";
@@ -29,7 +29,11 @@ export function useMailEvents() {
         const { prefs, pushToast } = useUiStore.getState();
         const first = e.latest[0];
         const text = e.count === 1 && first ? `${displayName(first.from)}: ${first.subject}` : `${e.count} new messages`;
-        if (prefs.notifications && typeof Notification !== "undefined" && document.hidden) {
+        // In the desktop app the backend shows the system notification
+        // whenever the window is out of view.
+        if (isTauri()) {
+          if (!document.hidden) pushToast(text, "info");
+        } else if (prefs.notifications && typeof Notification !== "undefined" && document.hidden) {
           if (Notification.permission === "granted") new Notification("New mail", { body: text });
           else if (Notification.permission === "default") void Notification.requestPermission();
         } else {
@@ -44,7 +48,15 @@ export function useMailEvents() {
       }),
     );
 
+    // Mirror the notifications preference into the backend.
+    const pushPref = (on: boolean) => void api.setNotifications(on).catch(() => {});
+    pushPref(useUiStore.getState().prefs.notifications);
+    const unsubPrefs = useUiStore.subscribe((s, prev) => {
+      if (s.prefs.notifications !== prev.prefs.notifications) pushPref(s.prefs.notifications);
+    });
+
     return () => {
+      unsubPrefs();
       clearTimeout(refreshTimer);
       subs.forEach((p) => void p.then((un) => un()));
     };

@@ -87,7 +87,6 @@ export interface MailState {
   removeAccount(id: string): Promise<void>;
   setSyncState(accountId: string, state: SyncState): void;
   sync(accountId?: string): Promise<void>;
-  syncAll(): Promise<void>;
   activeFolder(): Folder | null;
   activeAccount(): Account | null;
 }
@@ -256,6 +255,8 @@ export const useMailStore = create<MailState>((set, get) => {
       // A filter hidden in this folder must not keep narrowing its list.
       const filter = hasMailFilters(folder, null) ? get().filter : "all";
       set({ activeFolderId: id, activeTagId: null, selectedEmailId: null, activeEmail: null, filter });
+      // Show what is cached right away; new mail arrives via `mail:changed`.
+      api.syncFolder(id).catch(() => {});
       await get().loadEmails();
     },
 
@@ -435,10 +436,6 @@ export const useMailStore = create<MailState>((set, get) => {
 
     async sync(accountId) {
       await api.syncNow(accountId ?? get().activeAccountId ?? undefined);
-    },
-
-    async syncAll() {
-      await api.syncNow();
     },
 
     activeFolder() {

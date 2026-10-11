@@ -12,7 +12,6 @@ import {
   OctagonAlert,
   PenSquare,
   Plus,
-  RefreshCw,
   Send,
   Settings,
   Tag as TagIcon,
@@ -203,14 +202,13 @@ function useInboxUnread(accounts: Account[], enabled: boolean): Record<string, n
 
 /**
  * The account in use, as a dropdown on top of the sidebar: switch mailbox,
- * add one, open account settings, sync everything.
+ * add one, open account settings.
  */
 function AccountSwitcher() {
   const accounts = useMailStore((s) => s.accounts);
   const activeId = useMailStore((s) => s.activeAccountId);
   const syncState = useMailStore((s) => s.syncState);
-  const anySyncing = Object.values(syncState).includes("syncing");
-  const { selectAccount, syncAll } = useMailStore.getState();
+  const { selectAccount } = useMailStore.getState();
   const { openSettings } = useUiStore.getState();
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -306,10 +304,6 @@ function AccountSwitcher() {
         >
           <UserCog size={14} strokeWidth={1.6} className="text-[var(--text-muted)]" />
           Manage accounts
-        </button>
-        <button type="button" className={item} onClick={() => void syncAll()}>
-          <RefreshCw size={14} strokeWidth={1.6} className={cx("text-[var(--text-muted)]", anySyncing && "animate-spin")} />
-          Sync all accounts
         </button>
       </Popover>
     </>

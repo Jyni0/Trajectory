@@ -10,7 +10,7 @@ use super::fixtures::*;
 use super::mock_servers::*;
 use super::test_context;
 use crate::error::AppError;
-use crate::mail_engine::{sync_account, SyncCommand, SyncEngine};
+use crate::mail_engine::{sync_account, sync_folder, SyncCommand, SyncEngine};
 use crate::models::*;
 use crate::secrets::{SecretStore, KEY_PASSWORD};
 use crate::service::{events, AppContext};
@@ -354,4 +354,32 @@ async fn sync_errors_are_reported_as_events() {
             .any(|(n, v)| n == events::SYNC_STATUS && v["state"] == "error")
     })
     .await;
+}
+
+#[tokio::test]
+async fn opening_a_folder_fetches_only_its_new_mail() {
+    let imap = imap_server(vec![
+        ("INBOX".into(), vec![imap_msg(1, &[], simple_text("First", "f1@t"))]),
+        ("Sent".into(), vec![]),
+    ])
+    .await;
+    let smtp = smtp_server().await;
+    let (ctx, sink, _) = test_context();
+    let account = ctx.add_account(new_account(AccountKind::Imap, imap.port, smtp.port, PASS), true).await.unwrap();
+    sync_account(&ctx, &account).await.unwrap();
+    let inbox = ctx.db.list_folders(&account.id).unwrap().into_iter().find(|f| f.role == FolderRole::Inbox).unwrap();
+    sink.events.lock().unwrap().clear();
+
+    imap.mailboxes.lock().unwrap()[0].1.push(imap_msg(2, &[], simple_text("Second", "f2@t")));
+    assert_eq!(sync_folder(&ctx, &account, &inbox.id).await.unwrap(), 1);
+    let new = sink.find(events::MAIL_NEW).expect("new inbox mail is announced");
+    assert_eq!(new["count"], 1);
+    assert_eq!(new["latest"][0]["subject"], "Second");
+
+    // Through the engine, a folder request reports progress like an account sync.
+    let (engine, handle) = SyncEngine::new(ctx.clone(), Duration::from_secs(3600));
+    tokio::spawn(engine.run());
+    sink.events.lock().unwrap().clear();
+    handle.request(SyncCommand::Folder(inbox.id.clone()));
+    wait_until(|| sink.events.lock().unwrap().iter().any(|(n, v)| n == events::SYNC_STATUS && v["state"] == "idle")).await;
 }

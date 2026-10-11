@@ -1,5 +1,6 @@
 //! Tauri IPC commands — thin wrappers over `AppContext`.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use tauri::{AppHandle, Manager, State};
@@ -14,6 +15,8 @@ use crate::service::AppContext;
 pub struct AppState {
     pub ctx: Arc<AppContext>,
     pub sync: SyncHandle,
+    /// The "Desktop notifications" preference, mirrored from the UI.
+    pub notify: AtomicBool,
 }
 
 type Cmd<'a> = State<'a, AppState>;
@@ -190,6 +193,17 @@ pub fn save_draft(state: Cmd<'_>, email: OutgoingEmail) -> AppResult<String> {
 #[tauri::command]
 pub fn sync_now(state: Cmd<'_>, account_id: Option<String>) {
     state.sync.request(account_id.map(SyncCommand::Account).unwrap_or(SyncCommand::All));
+}
+
+/// Fetches new mail of one folder (it was just opened).
+#[tauri::command]
+pub fn sync_folder(state: Cmd<'_>, folder_id: String) {
+    state.sync.request(SyncCommand::Folder(folder_id));
+}
+
+#[tauri::command]
+pub fn set_notifications(state: Cmd<'_>, enabled: bool) {
+    state.notify.store(enabled, Ordering::Relaxed);
 }
 
 /// Saves an attachment into the Downloads folder and reveals it.
