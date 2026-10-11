@@ -4,6 +4,7 @@ import { Mail, Plus } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TitleBar } from "@/components/layout/TitleBar";
 import { Toaster } from "@/components/layout/Toaster";
+import { UpdateBanner } from "@/components/layout/UpdateBanner";
 import { EmailList } from "@/components/mail/EmailList";
 import { MailReader } from "@/components/mail/MailReader";
 import { Composer, composerKey } from "@/components/mail/Composer";
@@ -15,6 +16,7 @@ import { emptyDraft } from "@/lib/compose";
 import { applyTheme } from "@/lib/themes";
 import { useMailStore } from "@/store/mailStore";
 import { useUiStore } from "@/store/uiStore";
+import { startUpdateChecks } from "@/store/updateStore";
 
 /** Bar widths of the ghost rows (sender, subject) — uneven, like real mail. */
 const GHOST_ROWS: [number, number][] = [
@@ -83,6 +85,8 @@ export default function App() {
     void useMailStore.getState().init();
   }, []);
 
+  useEffect(() => startUpdateChecks(), []);
+
   useEffect(() => applyTheme(theme), [theme]);
 
   useEffect(() => {
@@ -130,6 +134,7 @@ export default function App() {
         </main>
       </div>
       <SettingsModal />
+      <UpdateBanner />
       <Toaster />
     </div>
   );

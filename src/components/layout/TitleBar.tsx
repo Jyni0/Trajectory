@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Copy, Minus, Square, X } from "lucide-react";
 import { isTauri } from "@/lib/api";
 import { shortcutKey } from "@/lib/keys";
+import { isMac, shortcutLabel } from "@/lib/platform";
 
 interface MenuItem {
   label: string;
@@ -22,6 +23,7 @@ async function win() {
  * The window's own title bar (the native frame is off): app name, App / View
  * menus with their shortcuts, and the window buttons. Closing hides the
  * window to the tray (background sync keeps running); App → Quit exits.
+ * On macOS the native traffic lights sit on the left instead of our buttons.
  */
 export function TitleBar({
   onNewMessage,
@@ -129,7 +131,7 @@ export function TitleBar({
   return (
     <div ref={barRef} data-tauri-drag-region className="flex h-[34px] shrink-0 select-none items-center bg-[var(--bg-titlebar)]">
       {/* Left: app menu */}
-      <div className="flex h-full items-center gap-1 pl-2">
+      <div className={`flex h-full items-center gap-1 ${isMac && isTauri() ? "pl-[78px]" : "pl-2"}`} data-tauri-drag-region>
         <span className="mr-0.5 bg-[var(--text-muted)] bg-clip-text px-2 text-[13px] font-semibold tracking-wide text-transparent">
           Trajectory
         </span>
@@ -177,7 +179,7 @@ export function TitleBar({
                         }}
                       >
                         <span className="flex-1">{item.label}</span>
-                        {item.shortcut && <span className="pl-4 text-[11px] text-[var(--text-dim)]">{item.shortcut}</span>}
+                        {item.shortcut && <span className="pl-4 text-[11px] text-[var(--text-dim)]">{shortcutLabel(item.shortcut)}</span>}
                       </button>
                     ),
                   )}
@@ -191,8 +193,8 @@ export function TitleBar({
       {/* Center: drag region */}
       <div className="h-full flex-1" data-tauri-drag-region />
 
-      {/* Right: window controls — 54px wide, full height */}
-      <div className="flex h-full items-stretch">
+      {/* Right: window controls — 54px wide, full height (macOS has its own) */}
+      {!(isMac && isTauri()) && <div className="flex h-full items-stretch">
         <button type="button" className={WIN_BTN} onClick={minimize} title="Minimize">
           <Minus size={15} strokeWidth={1} />
         </button>
@@ -207,7 +209,7 @@ export function TitleBar({
         >
           <X size={15} strokeWidth={1.2} />
         </button>
-      </div>
+      </div>}
     </div>
   );
 }

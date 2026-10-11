@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Trajectory",
+        "width": 1440,
+        "height": 700,
+        "minWidth": 980,
+        "minHeight": 600,
+        "backgroundColor": "#101010",
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x": 14,
+          "y": 12
+        }
+      }
+    ]
+  }
+}

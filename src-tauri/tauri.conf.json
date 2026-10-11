@@ -35,6 +35,30 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true,
+    "category": "Productivity",
+    "shortDescription": "Desktop mail client",
+    "linux": {
+      "deb": {
+        "depends": [
+          "libayatana-appindicator3-1"
+        ]
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUyNDQyNjQ3Qjg3NUU4QTMKUldTajZIVzRSeVpFVXZZbWRnOVBWVnB0Q0dxWThwcEpxdDBqcTZLcnVHeldaMjZQNWRYbFY4Yy8K",
+      "endpoints": [
+        "https://github.com/Jyni0/Trajectory/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

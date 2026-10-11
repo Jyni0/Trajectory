@@ -163,7 +163,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
+            #[cfg(desktop)]
+            app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
             restrict_dir(&dir);
@@ -224,6 +227,15 @@ pub fn run() {
             commands::open_external,
             quit_app,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Trajectory");
+        .build(tauri::generate_context!())
+        .expect("error while building Trajectory")
+        .run(|app, event| {
+            // macOS: clicking the Dock icon brings back a window closed to the tray.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = event {
+                show_main(app);
+            }
+            #[cfg(not(target_os = "macos"))]
+            let _ = (app, event);
+        });
 }

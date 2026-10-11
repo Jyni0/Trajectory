@@ -17,6 +17,22 @@ npm run dev              # http://localhost:1420 — онбординг
                          # http://localhost:1420/?demo — демо-ящик с письмами
 ```
 
+## Платформы и обновления
+
+Windows, macOS (Apple Silicon и Intel) и Linux (`.deb`, `.rpm`, AppImage). На macOS окно использует родные «светофоры» (`src-tauri/tauri.macos.conf.json`), закрытое в трей окно возвращается кликом по иконке в Dock.
+
+Для сборки на Linux нужны: `libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libdbus-1-dev pkg-config`.
+
+**Автообновление.** Приложение через 10 секунд после запуска и затем каждые 6 часов читает `latest.json` из последнего GitHub-релиза; если версия новее — предлагает «Update and restart». Проверить вручную: Settings → About → Check for updates. Обновления подписаны ключом minisign: публичный ключ лежит в `tauri.conf.json` (`plugins.updater.pubkey`), приватный — в секретах репозитория.
+
+Выпуск релиза:
+
+1. Поднять `version` в `package.json`, `src-tauri/tauri.conf.json` и `src-tauri/Cargo.toml`.
+2. Закоммитить и запушить тег: `git tag v2.8.0 && git push origin v2.8.0`.
+3. Workflow `.github/workflows/release.yml` соберёт все платформы и опубликует релиз вместе с `latest.json`.
+
+В секретах репозитория должны быть `TAURI_SIGNING_PRIVATE_KEY` (содержимое приватного ключа) и `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Локальный `npm run tauri build` тоже требует эти переменные окружения (иначе не подписать артефакты обновления).
+
 ## Структура
 
 ```
@@ -50,7 +66,7 @@ e2e/                            Playwright
 ## Архитектура
 
 - **IPC.** `src/lib/api.ts` описывает интерфейс `MailApi`. Внутри Tauri он вызывает Rust-команды через `invoke`, вне Tauri подставляется `mockBackend.ts` с той же семантикой. Именно на нём работают Vitest, Playwright и превью в браузере.
-- **Sync engine.** Одна Tokio-задача просыпается каждые 2 минуты или по `sync_now`. Аккаунты синхронизируются параллельно, папки — инкрементально через курсор провайдера в `sync_state`:
+- **Sync engine.** Одна Tokio-задача каждые 30 секунд проверяет «Входящие» всех аккаунтов, а каждые 3 минуты синхронизирует все папки. Открытие папки в UI сразу запрашивает её синхронизацию (`sync_folder`). Аккаунты синхронизируются параллельно, папки — инкрементально через курсор провайдера в `sync_state`:
   - IMAP: UIDVALIDITY + последний UID (`UID FETCH n:*`);
   - POP3: множество UIDL;
   - Gmail: `historyId` (`/history`, при 404 — полный листинг);
