@@ -1,9 +1,9 @@
 //! Tauri IPC commands — thin wrappers over `AppContext`.
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::autodetect;
@@ -11,12 +11,15 @@ use crate::error::{AppError, AppResult};
 use crate::mail_engine::{SyncCommand, SyncHandle};
 use crate::models::*;
 use crate::service::AppContext;
+use crate::updater::{self, InstallOutcome, UpdateInfo};
 
 pub struct AppState {
     pub ctx: Arc<AppContext>,
     pub sync: SyncHandle,
     /// The "Desktop notifications" preference, mirrored from the UI.
     pub notify: AtomicBool,
+    /// The release found by the last `check_update`; `install_update` applies it.
+    pub update: Mutex<Option<UpdateInfo>>,
 }
 
 type Cmd<'a> = State<'a, AppState>;
@@ -199,6 +202,46 @@ pub fn sync_now(state: Cmd<'_>, account_id: Option<String>) {
 #[tauri::command]
 pub fn sync_folder(state: Cmd<'_>, folder_id: String) {
     state.sync.request(SyncCommand::Folder(folder_id));
+}
+
+/// Looks for a newer release on GitHub.
+#[tauri::command]
+pub async fn check_update(state: Cmd<'_>) -> AppResult<Option<UpdateInfo>> {
+    let found = updater::check("https://api.github.com").await?;
+    *state.update.lock().unwrap() = found.clone();
+    Ok(found)
+}
+
+/// Downloads and applies the release found by `check_update`, then quits
+/// (the new version starts by itself). Without an installer for this
+/// platform, opens the release page instead.
+#[tauri::command]
+pub async fn install_update(app: AppHandle, state: Cmd<'_>) -> AppResult<InstallOutcome> {
+    let info = state.update.lock().unwrap().clone().ok_or_else(|| AppError::NotFound("no update to install".into()))?;
+    let (Some(url), Some(name)) = (info.asset_url.clone(), info.asset_name.clone()) else {
+        app.opener().open_url(&info.page_url, None::<&str>).map_err(|e| AppError::Io(std::io::Error::other(e.to_string())))?;
+        return Ok(InstallOutcome::OpenedPage);
+    };
+    let dest = updater::work_dir(&info.version)?.join(&name);
+    let mut last = 0u64;
+    updater::download(&url, &dest, |done, total| {
+        // About every 256 KiB, not on every chunk.
+        if done - last >= 256 * 1024 || Some(done) == total {
+            last = done;
+            let _ = app.emit("update:progress", serde_json::json!({ "downloaded": done, "total": total }));
+        }
+    })
+    .await?;
+    tauri::async_runtime::spawn_blocking(move || updater::apply(&dest))
+        .await
+        .map_err(|e| AppError::Io(std::io::Error::other(e.to_string())))??;
+    // Give the reply a moment to reach the UI, then make way for the new version.
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        handle.exit(0);
+    });
+    Ok(InstallOutcome::Restarting)
 }
 
 #[tauri::command]

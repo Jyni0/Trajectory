@@ -3,10 +3,13 @@ import { errorMessage, isTauri } from "@/lib/api";
 
 export type UpdateStatus = "idle" | "checking" | "uptodate" | "available" | "downloading" | "error";
 
-/** What the updater plugin returns for a release newer than this build. */
-interface Pending {
+/** A newer GitHub release, as `check_update` reports it. */
+interface UpdateInfo {
   version: string;
-  install(onProgress: (done: number, total: number | null) => void): Promise<void>;
+  notes: string | null;
+  pageUrl: string;
+  /** Installer the app applies itself; null = only the release page. */
+  assetName: string | null;
 }
 
 interface UpdateState {
@@ -18,32 +21,16 @@ interface UpdateState {
   error: string | null;
   /** The banner was closed with "Later" (the About page still offers it). */
   dismissed: boolean;
+  /** No installer for this platform: "Update" opens the release page. */
+  manual: boolean;
   check(): Promise<void>;
   install(): Promise<void>;
   dismiss(): void;
 }
 
-let pending: Pending | null = null;
-
-/** Asks GitHub Releases (`latest.json`) for a newer, signed build. */
-async function findUpdate(): Promise<Pending | null> {
-  if (!isTauri()) return null;
-  const { check } = await import("@tauri-apps/plugin-updater");
-  const update = await check();
-  if (!update) return null;
-  return {
-    version: update.version,
-    async install(onProgress) {
-      let total: number | null = null;
-      let done = 0;
-      await update.downloadAndInstall((e) => {
-        if (e.event === "Started") total = e.data.contentLength ?? null;
-        else if (e.event === "Progress") onProgress((done += e.data.chunkLength), total);
-      });
-      const { relaunch } = await import("@tauri-apps/plugin-process");
-      await relaunch();
-    },
-  };
+async function invoke<T>(cmd: string): Promise<T> {
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<T>(cmd);
 }
 
 export const useUpdateStore = create<UpdateState>((set, get) => ({
@@ -52,14 +39,15 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
   progress: null,
   error: null,
   dismissed: false,
+  manual: false,
 
   async check() {
     const { status } = get();
-    if (status === "checking" || status === "downloading") return;
+    if (!isTauri() || status === "checking" || status === "downloading") return;
     set({ status: "checking", error: null });
     try {
-      pending = await findUpdate();
-      if (pending) set({ status: "available", version: pending.version });
+      const info = await invoke<UpdateInfo | null>("check_update");
+      if (info) set({ status: "available", version: info.version, manual: !info.assetName });
       else set({ status: "uptodate", version: null });
     } catch (e) {
       set({ status: "error", error: errorMessage(e) });
@@ -67,12 +55,25 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
   },
 
   async install() {
-    if (!pending || get().status === "downloading") return;
+    const { status, manual } = get();
+    if (status !== "available") return;
+    // Nothing to apply here (e.g. a .deb install): the release page opens.
+    if (manual) {
+      await invoke("install_update").catch((e) => set({ status: "error", error: errorMessage(e) }));
+      return;
+    }
     set({ status: "downloading", progress: null, error: null, dismissed: false });
+    const { listen } = await import("@tauri-apps/api/event");
+    const off = await listen<{ downloaded: number; total: number | null }>("update:progress", ({ payload }) =>
+      set({ progress: payload.total ? Math.min(1, payload.downloaded / payload.total) : null }),
+    );
     try {
-      await pending.install((done, total) => set({ progress: total ? Math.min(1, done / total) : null }));
+      // On success the app quits and the new version starts.
+      await invoke("install_update");
     } catch (e) {
       set({ status: "error", error: errorMessage(e) });
+    } finally {
+      off();
     }
   },
 

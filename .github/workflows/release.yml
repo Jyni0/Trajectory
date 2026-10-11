@@ -1,19 +1,12 @@
-# Builds Trajectory for Windows, macOS (Apple Silicon + Intel) and Linux and
-# publishes a GitHub release with the installers plus the signed `latest.json`
-# the in-app updater reads.
-#
-# Release: bump "version" in package.json, src-tauri/tauri.conf.json and
-# src-tauri/Cargo.toml, commit, then
-#   git tag v2.8.0 && git push origin v2.8.0
-#
-# Required repository secrets:
-#   TAURI_SIGNING_PRIVATE_KEY            contents of the updater private key
-#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD   its password (may be empty)
+# Optional: builds Trajectory for Windows, macOS (Apple Silicon + Intel) and
+# Linux and attaches the installers to a DRAFT release "Release-<version>".
+# It only runs when started by hand (Actions → Release → Run workflow) and
+# never publishes anything: review the draft and press "Publish" yourself.
+# No secrets needed. The app updates from whatever release is published
+# latest, as long as its installers keep Tauri's default file names.
 name: Release
 
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -61,8 +54,6 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           # Optional — sign and notarize the macOS app so Gatekeeper opens it
           # without a warning (needs an Apple Developer account):
           # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -72,9 +63,9 @@ jobs:
           # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
-          tagName: v__VERSION__
-          releaseName: Trajectory v__VERSION__
+          tagName: Release-__VERSION__
+          releaseName: Trajectory __VERSION__
           releaseBody: See the assets below to download and install this version.
-          releaseDraft: false
+          releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

@@ -23,15 +23,15 @@ Windows, macOS (Apple Silicon и Intel) и Linux (`.deb`, `.rpm`, AppImage). Н�
 
 Для сборки на Linux нужны: `libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libdbus-1-dev pkg-config`.
 
-**Автообновление.** Приложение через 10 секунд после запуска и затем каждые 6 часов читает `latest.json` из последнего GitHub-релиза; если версия новее — предлагает «Update and restart». Проверить вручную: Settings → About → Check for updates. Обновления подписаны ключом minisign: публичный ключ лежит в `tauri.conf.json` (`plugins.updater.pubkey`), приватный — в секретах репозитория.
+**Автообновление.** Ключи и подписи не нужны. Через 10 секунд после запуска и затем каждые 6 часов приложение читает последний опубликованный релиз репозитория `Jyni0/Trajectory` через GitHub API (`src-tauri/src/updater.rs`). Если версия в теге (`Release-2.8.0` или `v2.8.0`) новее текущей — предлагает «Update and restart». Проверить вручную: Settings → About → Check for updates.
 
-Выпуск релиза:
+Установщик выбирается среди файлов релиза по имени (стандартные имена Tauri):
 
-1. Поднять `version` в `package.json`, `src-tauri/tauri.conf.json` и `src-tauri/Cargo.toml`.
-2. Закоммитить и запушить тег: `git tag v2.8.0 && git push origin v2.8.0`.
-3. Workflow `.github/workflows/release.yml` соберёт все платформы и опубликует релиз вместе с `latest.json`.
+- Windows — `*_x64-setup.exe` (или `.msi`), ставится в пассивном режиме и сам перезапускает приложение;
+- macOS — `*_aarch64.dmg` / `*_x64.dmg`: образ монтируется, `.app` заменяет текущее приложение;
+- Linux — `*.AppImage` заменяет запущенный AppImage; при установке из `.deb` / `.rpm` открывается страница релиза.
 
-В секретах репозитория должны быть `TAURI_SIGNING_PRIVATE_KEY` (содержимое приватного ключа) и `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Локальный `npm run tauri build` тоже требует эти переменные окружения (иначе не подписать артефакты обновления).
+Выпуск: поднять `version` в `package.json`, `src-tauri/tauri.conf.json` и `src-tauri/Cargo.toml`, собрать `npm run tauri build` и загрузить установщики в новый релиз на GitHub. Сборки для macOS и Linux можно получить workflow `.github/workflows/release.yml` (запускается вручную, создаёт черновик релиза, ничего не публикует сам).
 
 ## Структура
 

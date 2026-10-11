@@ -14,6 +14,7 @@ pub mod providers;
 pub mod secrets;
 pub mod service;
 pub mod site_icon;
+pub mod updater;
 
 #[cfg(test)]
 mod tests;
@@ -163,10 +164,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_process::init())
         .setup(|app| {
-            #[cfg(desktop)]
-            app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
             restrict_dir(&dir);
@@ -178,7 +176,7 @@ pub fn run() {
                 Arc::new(TauriSink(app.handle().clone())),
             );
             let (engine, sync) = SyncEngine::new(ctx.clone(), mail_engine::DEFAULT_INTERVAL);
-            app.manage(AppState { ctx, sync, notify: AtomicBool::new(true) });
+            app.manage(AppState { ctx, sync, notify: AtomicBool::new(true), update: Default::default() });
             tauri::async_runtime::spawn(engine.run());
             setup_tray(app)?;
             Ok(())
@@ -223,6 +221,8 @@ pub fn run() {
             commands::sync_now,
             commands::sync_folder,
             commands::set_notifications,
+            commands::check_update,
+            commands::install_update,
             commands::save_attachment,
             commands::open_external,
             quit_app,

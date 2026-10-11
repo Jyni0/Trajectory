@@ -144,11 +144,12 @@ function UpdateRow() {
   const status = useUpdateStore((s) => s.status);
   const version = useUpdateStore((s) => s.version);
   const error = useUpdateStore((s) => s.error);
+  const manual = useUpdateStore((s) => s.manual);
   const { check, install } = useUpdateStore.getState();
   const hint = !isTauri()
     ? "Available in the desktop app"
     : {
-        idle: "New versions are installed from GitHub Releases",
+        idle: "New versions come from the GitHub releases",
         checking: "Checking…",
         uptodate: "You have the latest version",
         available: `Version ${version} is available`,
@@ -159,7 +160,7 @@ function UpdateRow() {
     <SettingRow title="Updates" hint={hint}>
       {status === "available" ? (
         <Button size="sm" variant="primary" onClick={() => void install()}>
-          Update and restart
+          {manual ? "Open release page" : "Update and restart"}
         </Button>
       ) : (
         <Button

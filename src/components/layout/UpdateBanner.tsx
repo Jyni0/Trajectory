@@ -9,6 +9,7 @@ export function UpdateBanner() {
   const version = useUpdateStore((s) => s.version);
   const progress = useUpdateStore((s) => s.progress);
   const dismissed = useUpdateStore((s) => s.dismissed);
+  const manual = useUpdateStore((s) => s.manual);
   const { install, dismiss } = useUpdateStore.getState();
   const show = !dismissed && (status === "available" || status === "downloading");
 
@@ -29,7 +30,11 @@ export function UpdateBanner() {
             <div className="flex min-w-0 flex-1 flex-col leading-snug">
               <span className="font-medium">Trajectory {version} is available</span>
               <span className="text-[12px] text-[var(--text-dim)]">
-                {status === "downloading" ? "Downloading — the app restarts when it's done." : "Install it now; the app restarts."}
+                {status === "downloading"
+                  ? "Downloading — the app restarts when it's done."
+                  : manual
+                    ? "Download it from the release page."
+                    : "Install it now; the app restarts."}
               </span>
             </div>
             {status === "available" && (
@@ -56,7 +61,7 @@ export function UpdateBanner() {
                 Later
               </Button>
               <Button size="sm" variant="primary" onClick={() => void install()}>
-                Update and restart
+                {manual ? "Open release page" : "Update and restart"}
               </Button>
             </div>
           )}

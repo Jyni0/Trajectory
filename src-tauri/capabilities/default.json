@@ -16,8 +16,6 @@
     "core:window:allow-start-dragging",
     "core:window:allow-is-maximized",
     "core:window:allow-is-fullscreen",
-    "core:window:allow-set-fullscreen",
-    "updater:default",
-    "process:allow-restart"
+    "core:window:allow-set-fullscreen"
   ]
 }

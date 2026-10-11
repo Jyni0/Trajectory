@@ -17,6 +17,7 @@ mod service_tests;
 mod smtp_mock_tests;
 mod tags_tests;
 mod thread_tests;
+mod updater_tests;
 
 use std::sync::{Arc, Mutex};
 
