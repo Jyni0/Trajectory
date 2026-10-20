@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Info, KeyRound, Palette, Plus, RefreshCw, SlidersHorizontal, Trash2, Users, X, type LucideIcon } from "lucide-react";
 import { useMailStore } from "@/store/mailStore";
 import { useUiStore, type SettingsTab } from "@/store/uiStore";
-import { useUpdateStore } from "@/store/updateStore";
-import { errorMessage, isTauri } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 import { THEME_LIST, type Theme } from "@/lib/themes";
 import {
   Button,
@@ -20,6 +19,7 @@ import {
   Switch,
 } from "@/components";
 import { AddAccountPanel } from "./AddAccountPanel";
+import { UpdateRow } from "./UpdateRow";
 import { OAuthAppsPanel } from "./OAuthAppsPanel";
 import { SenderAvatar, VerifiedMark, domainOf } from "@/components/mail/SenderAvatar";
 
@@ -136,43 +136,6 @@ function GeneralPanel() {
         <Switch on={prefs.senderLogos} onChange={(v) => setPref("senderLogos", v)} ariaLabel="Sender logos" />
       </SettingRow>
     </SettingsCard>
-  );
-}
-
-/** Status line and button of the "Updates" row. */
-function UpdateRow() {
-  const status = useUpdateStore((s) => s.status);
-  const version = useUpdateStore((s) => s.version);
-  const error = useUpdateStore((s) => s.error);
-  const manual = useUpdateStore((s) => s.manual);
-  const { check, install } = useUpdateStore.getState();
-  const hint = !isTauri()
-    ? "Available in the desktop app"
-    : {
-        idle: "New versions come from the GitHub releases",
-        checking: "Checking…",
-        uptodate: "You have the latest version",
-        available: `Version ${version} is available`,
-        downloading: `Downloading ${version}…`,
-        error: `Could not check: ${error}`,
-      }[status];
-  return (
-    <SettingRow title="Updates" hint={hint}>
-      {status === "available" ? (
-        <Button size="sm" variant="primary" onClick={() => void install()}>
-          {manual ? "Open release page" : "Update and restart"}
-        </Button>
-      ) : (
-        <Button
-          size="sm"
-          icon={<RefreshCw size={13} className={status === "checking" ? "animate-spin" : undefined} />}
-          disabled={!isTauri() || status === "checking" || status === "downloading"}
-          onClick={() => void check()}
-        >
-          Check for updates
-        </Button>
-      )}
-    </SettingRow>
   );
 }
 

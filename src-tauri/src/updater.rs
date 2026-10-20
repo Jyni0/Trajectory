@@ -7,8 +7,12 @@
 //! - Windows: the NSIS `-setup.exe` (or the `.msi`) runs in passive mode and
 //!   starts the app again when it is done.
 //! - macOS: the `.dmg` is mounted and its `.app` replaces the running bundle.
-//! - Linux: a running AppImage is replaced by the new one. Installed from a
-//!   `.deb` / `.rpm`, the app needs root to update, so the release page opens.
+//! - Linux: a running AppImage is replaced by the new one; a `.deb` / `.rpm`
+//!   install is upgraded through the package manager (`pkexec` asks for the
+//!   password). Then the new version starts.
+//!
+//! Only a release without any installer for this system falls back to
+//! opening its page.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -69,8 +73,10 @@ pub enum Target {
     MacOs,
     /// Running from an AppImage (it can be swapped in place).
     LinuxAppImage,
-    /// Installed by the package manager.
-    LinuxPackage,
+    /// Installed from a `.deb` (dpkg-based distro).
+    LinuxDeb,
+    /// Installed from an `.rpm`.
+    LinuxRpm,
 }
 
 impl Target {
@@ -81,8 +87,10 @@ impl Target {
             Target::MacOs
         } else if std::env::var_os("APPIMAGE").is_some() {
             Target::LinuxAppImage
+        } else if Path::new("/usr/bin/dpkg").exists() {
+            Target::LinuxDeb
         } else {
-            Target::LinuxPackage
+            Target::LinuxRpm
         }
     }
 
@@ -92,7 +100,8 @@ impl Target {
             Target::Windows => &["-setup.exe", ".msi"],
             Target::MacOs => &[".dmg"],
             Target::LinuxAppImage => &[".appimage"],
-            Target::LinuxPackage => &[],
+            Target::LinuxDeb => &[".deb"],
+            Target::LinuxRpm => &[".rpm"],
         }
     }
 }
@@ -234,6 +243,10 @@ pub fn apply(installer: &Path) -> AppResult<()> {
         apply_dmg(installer)
     } else if name.ends_with(".appimage") {
         apply_appimage(installer)
+    } else if name.ends_with(".deb") {
+        apply_package(&["dpkg", "-i"], installer)
+    } else if name.ends_with(".rpm") {
+        apply_package(&["rpm", "-U", "--replacepkgs"], installer)
     } else {
         Err(AppError::Invalid(format!("don't know how to install {name}")))
     }
@@ -301,5 +314,19 @@ fn apply_appimage(new: &Path) -> AppResult<()> {
     std::fs::copy(new, &staged)?;
     std::fs::rename(&staged, &current)?;
     std::process::Command::new(&current).spawn()?;
+    Ok(())
+}
+
+/// Upgrades the installed package as root (`pkexec` shows the system's
+/// password prompt), then starts the upgraded binary.
+fn apply_package(cmd: &[&str], package: &Path) -> AppResult<()> {
+    let exe = std::env::current_exe()?;
+    run(std::process::Command::new("pkexec").args(cmd).arg(package)).map_err(|e| match e {
+        AppError::Io(io) => AppError::Invalid(format!("the package could not be installed: {io}")),
+        e => e,
+    })?;
+    // The package replaced the file at the same path.
+    let exe = PathBuf::from(exe.to_string_lossy().trim_end_matches(" (deleted)"));
+    std::process::Command::new(exe).spawn()?;
     Ok(())
 }

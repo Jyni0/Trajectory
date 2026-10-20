@@ -23,13 +23,15 @@ Windows, macOS (Apple Silicon и Intel) и Linux (`.deb`, `.rpm`, AppImage). Н�
 
 Для сборки на Linux нужны: `libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libdbus-1-dev pkg-config`.
 
-**Автообновление.** Ключи и подписи не нужны. Через 10 секунд после запуска и затем каждые 6 часов приложение читает последний опубликованный релиз репозитория `Jyni0/Trajectory` через GitHub API (`src-tauri/src/updater.rs`). Если версия в теге (`Release-2.8.0` или `v2.8.0`) новее текущей — предлагает «Update and restart». Проверить вручную: Settings → About → Check for updates.
+**Автообновление.** Ключи и подписи не нужны. Через 10 секунд после запуска и затем каждые 6 часов приложение читает последний опубликованный релиз репозитория `Jyni0/Trajectory` через GitHub API (`src-tauri/src/updater.rs`). Если версия в теге (`Release-2.8.0` или `v2.8.0`) новее текущей — как в Gravitation, у пункта Settings в сайдбаре появляется метка **Update**, она открывает Settings → About с описанием релиза. Кнопка «Update to X» скачивает установщик (с прогрессом), ставит его и перезапускает приложение. Проверить вручную: Settings → About → Check for updates.
 
 Установщик выбирается среди файлов релиза по имени (стандартные имена Tauri):
 
 - Windows — `*_x64-setup.exe` (или `.msi`), ставится в пассивном режиме и сам перезапускает приложение;
 - macOS — `*_aarch64.dmg` / `*_x64.dmg`: образ монтируется, `.app` заменяет текущее приложение;
-- Linux — `*.AppImage` заменяет запущенный AppImage; при установке из `.deb` / `.rpm` открывается страница релиза.
+- Linux — `*.AppImage` заменяет запущенный AppImage; `.deb` / `.rpm` ставится через `pkexec dpkg -i` / `pkexec rpm -U` (система спросит пароль).
+
+Страница релиза открывается, только если в релизе нет сборки для этой системы.
 
 Выпуск: поднять `version` в `package.json`, `src-tauri/tauri.conf.json` и `src-tauri/Cargo.toml`, собрать `npm run tauri build` и загрузить установщики в новый релиз на GitHub. Сборки для macOS и Linux можно получить workflow `.github/workflows/release.yml` (запускается вручную, создаёт черновик релиза, ничего не публикует сам).
 

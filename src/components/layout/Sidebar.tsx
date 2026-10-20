@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useMailStore } from "@/store/mailStore";
 import { useUiStore } from "@/store/uiStore";
+import { selectHasUpdate, useUpdateStore } from "@/store/updateStore";
 import { api, errorMessage } from "@/lib/api";
 import { emptyDraft } from "@/lib/compose";
 import type { Account, Folder, FolderRole, Tag } from "@/lib/types";
@@ -521,6 +522,8 @@ export function Sidebar() {
   const activeAccountId = useMailStore((s) => s.activeAccountId);
   const { selectFolder } = useMailStore.getState();
   const { openSettings, openComposer } = useUiStore.getState();
+  const hasUpdate = useUpdateStore(selectHasUpdate);
+  const updateVersion = useUpdateStore((s) => s.release?.version);
   const [foldersOpen, setFoldersOpen] = useState(true);
 
   const primary = PRIMARY.map((role) => folders.find((f) => f.role === role)).filter((f): f is Folder => !!f);
@@ -598,6 +601,20 @@ export function Sidebar() {
           onClick={() => openSettings("accounts")}
         >
           <span>Settings</span>
+          {hasUpdate && (
+            <span
+              role="button"
+              data-testid="update-pill"
+              className="ml-auto rounded-full bg-[var(--accent)]/15 px-2 py-0.5 text-[11px] font-medium text-[var(--accent)] hover:bg-[var(--accent)]/25"
+              title={`Version ${updateVersion} is available`}
+              onClick={(e) => {
+                e.stopPropagation();
+                openSettings("about");
+              }}
+            >
+              Update
+            </span>
+          )}
         </NavItem>
       </div>
 

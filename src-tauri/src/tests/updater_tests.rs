@@ -34,8 +34,9 @@ fn picks_the_installer_for_this_platform_and_cpu() {
     assert_eq!(pick_asset(ASSETS, Target::LinuxAppImage, "x86_64"), Some("Trajectory_2.8.0_amd64.AppImage"));
     // No build for this CPU: nothing, rather than one that cannot run.
     assert_eq!(pick_asset(ASSETS, Target::LinuxAppImage, "aarch64"), None);
-    // A package install updates through the release page.
-    assert_eq!(pick_asset(ASSETS, Target::LinuxPackage, "x86_64"), None);
+    assert_eq!(pick_asset(ASSETS, Target::LinuxDeb, "x86_64"), Some("Trajectory_2.8.0_amd64.deb"));
+    assert_eq!(pick_asset(ASSETS, Target::LinuxRpm, "x86_64"), Some("Trajectory-2.8.0-1.x86_64.rpm"));
+    assert_eq!(pick_asset(ASSETS, Target::LinuxRpm, "aarch64"), None);
     assert_eq!(pick_asset(&["Trajectory_2.8.0_universal.dmg"], Target::MacOs, "aarch64"), Some("Trajectory_2.8.0_universal.dmg"));
 }
 
@@ -63,9 +64,15 @@ fn reads_the_latest_release() {
     assert_eq!(info.asset_name.as_deref(), Some("Trajectory_2.8.0_x64-setup.exe"));
     assert!(info.asset_url.unwrap().ends_with("/v2.8.0/Trajectory_2.8.0_x64-setup.exe"));
 
-    let linux = parse_release(&release("v2.8.0", false), "2.7.3", Target::LinuxPackage, "x86_64").unwrap().unwrap();
-    assert_eq!(linux.asset_url, None);
-    assert_eq!(linux.page_url, "https://github.com/Jyni0/Trajectory/releases/tag/v2.8.0");
+    let linux = parse_release(&release("v2.8.0", false), "2.7.3", Target::LinuxDeb, "x86_64").unwrap().unwrap();
+    assert_eq!(linux.asset_name.as_deref(), Some("Trajectory_2.8.0_amd64.deb"));
+
+    // No build for this system in the release: only its page is left.
+    let mac = parse_release(&release("v2.8.0", false), "2.7.3", Target::MacOs, "aarch64").unwrap().unwrap();
+    assert!(mac.asset_name.is_some());
+    let arm_linux = parse_release(&release("v2.8.0", false), "2.7.3", Target::LinuxAppImage, "aarch64").unwrap().unwrap();
+    assert_eq!(arm_linux.asset_url, None);
+    assert_eq!(arm_linux.page_url, "https://github.com/Jyni0/Trajectory/releases/tag/v2.8.0");
 
     let named = parse_release(&release("Release-2.8.0", false), "2.7.3", Target::Windows, "x86_64").unwrap().unwrap();
     assert_eq!(named.version, "2.8.0");

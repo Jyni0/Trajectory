@@ -4,7 +4,6 @@ import { Mail, Plus } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TitleBar } from "@/components/layout/TitleBar";
 import { Toaster } from "@/components/layout/Toaster";
-import { UpdateBanner } from "@/components/layout/UpdateBanner";
 import { EmailList } from "@/components/mail/EmailList";
 import { MailReader } from "@/components/mail/MailReader";
 import { Composer, composerKey } from "@/components/mail/Composer";
@@ -134,7 +133,6 @@ export default function App() {
         </main>
       </div>
       <SettingsModal />
-      <UpdateBanner />
       <Toaster />
     </div>
   );
